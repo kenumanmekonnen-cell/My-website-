@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#C9A84C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ድህረ ገጼ">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>ድህረ ገጼ</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --dark: #0A0A0F;
+    --dark2: #13131A;
+    --dark3: #1C1C28;
+    --dark4: #242436;
+    --text: #E8E4D9;
+    --text-muted: #8A8578;
+    --accent: #E85D4A;
+    --accent2: #4A9EE8;
+    --green: #4AE89A;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overscroll-behavior: none;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 20%, rgba(201,168,76,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 80%, rgba(74,158,232,0.06) 0%, transparent 60%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── APP SHELL ── */
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    height: 100dvh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(var(--safe-top) + 16px) 20px 16px;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid rgba(201,168,76,0.15);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 50;
+  }
+
+  .app-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .install-btn {
+    background: linear-gradient(135deg, var(--gold), #E8A840);
+    color: var(--dark); border: none;
+    padding: 8px 16px; border-radius: 50px;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; display: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.3s;
+  }
+  .install-btn.visible { display: flex; align-items: center; gap: 6px; }
+  .install-btn:active { transform: scale(0.95); }
+
+  /* ── SCROLL CONTENT ── */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 20px 16px; padding-bottom: 100px; }
+  .section.active { display: block; animation: fadeUp 0.35s ease; }
+
+  /* ── HOME ── */
+  .home-hero {
+    text-align: center;
+    padding: 40px 0 32px;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.35);
+    color: var(--gold);
+    padding: 5px 16px; border-radius: 50px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .home-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px; font-weight: 900;
+    line-height: 1.1; letter-spacing: -1px;
+    margin-bottom: 14px;
+  }
+  .home-hero h1 span {
+    background: linear-gradient(135deg, var(--gold), #FF9F5A);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .home-hero p { color: var(--text-muted); font-size: 15px; line-height: 1.6; }
+
+  .feature-cards { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+
+  .fcard {
+    background: var(--dark2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex; align-items: center; gap: 16px;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fcard:active { transform: scale(0.98); }
+  .fcard::after {
+    content: '›';
+    position: absolute; right: 20px;
+    font-size: 22px; color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+  .fcard:active::after { transform: translateX(4px); }
+
+  .fcard-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .fc-photo .fcard-icon { background: rgba(232,93,74,0.15); }
+  .fc-text .fcard-icon  { background: rgba(201,168,76,0.15); }
+  .fc-excel .fcard-icon { background: rgba(74,232,154,0.15); }
+  .fc-ppt .fcard-icon   { background: rgba(74,158,232,0.15); }
+
+  .fcard-info h3 { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+  .fcard-info p  { font-size: 13px; color: var(--text-muted); }
+
+  /* ── PANEL ── */
+  .panel-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .back-btn {
+    width: 40px; height: 40px;
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .back-btn:active { background: var(--dark4); }
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px; font-weight: 700;
+  }
+
+  /* ── DROP ZONES ── */
+  .drop-zone {
+    border-radius: 20px;
+    padding: 44px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .drop-zone:active { transform: scale(0.98); }
+  .dz-photo { border: 2px dashed rgba(232,93,74,0.4); background: rgba(232,93,74,0.03); }
+  .dz-excel { border: 2px dashed rgba(74,232,154,0.4); background: rgba(74,232,154,0.03); }
+  .dz-ppt   { border: 2px dashed rgba(74,158,232,0.4); background: rgba(74,158,232,0.03); }
+  .dz-photo:active { background: rgba(232,93,74,0.08); }
+  .dz-excel:active { background: rgba(74,232,154,0.08); }
+  .dz-ppt:active   { background: rgba(74,158,232,0.08); }
+  .drop-zone input { display: none; }
+  .dz-icon { font-size: 48px; margin-bottom: 12px; }
+  .dz-title { font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 6px; }
+  .dz-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 18px; }
+
+  .upload-btn {
+    display: inline-block;
+    padding: 11px 28px; border-radius: 50px;
+    font-weight: 700; font-size: 14px;
+    border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+  .upload-btn:active { transform: scale(0.95); }
+  .ub-photo { background: var(--accent); color: white; }
+  .ub-excel { background: var(--green); color: var(--dark); }
+  .ub-ppt   { background: var(--accent2); color: white; }
+
+  /* ── PHOTO GRID ── */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 20px;
+  }
+  .photo-item {
+    position: relative;
+    border-radius: 12px; overflow: hidden;
+    aspect-ratio: 1;
+    background: var(--dark3);
+    animation: popIn 0.35s cubic-bezier(0.23,1,0.32,1) both;
+  }
+  .photo-item img { width:100%; height:100%; object-fit:cover; }
+  .photo-del {
+    position: absolute; top: 6px; right: 6px;
+    width: 28px; height: 28px;
+    background: rgba(232,93,74,0.9);
+    border: none; border-radius: 50%;
+    color: white; font-size: 14px;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── EDITOR ── */
+  .editor-toolbar {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    padding: 10px; background: var(--dark3);
+    border-radius: 14px 14px 0 0;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-bottom: none;
+  }
+  .tool-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text);
+    min-width: 36px; height: 36px; padding: 0 10px;
+    border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+  }
+  .tool-btn:active { background: rgba(201,168,76,0.2); color: var(--gold); }
+
+  .editor-area {
+    min-height: 280px; padding: 18px;
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 0 0 14px 14px;
+    color: var(--text); font-size: 16px; line-height: 1.8;
+    outline: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .editor-area:empty::before {
+    content: 'መረጃዎን እዚህ ይፃፉ...';
+    color: var(--text-muted); pointer-events: none;
+  }
+  .editor-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ── BUTTONS ── */
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), #E8A840);
+    color: var(--dark); border: none;
+    padding: 12px 24px; border-radius: 50px;
+    font-weight: 700; font-size: 14px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s; flex: 1;
+  }
+  .btn-ghost {
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text); padding: 12px 20px;
+    border-radius: 50px; font-size: 14px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s; flex: 1;
+  }
+  .btn-gold:active, .btn-ghost:active { transform: scale(0.96); }
+
+  /* ── EXCEL TABLE ── */
+  .sheet-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .sheet-tab {
+    padding: 6px 14px; border-radius: 50px;
+    border: 1px solid rgba(74,232,154,0.3);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 12px;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+  .sheet-tab.active { background: rgba(74,232,154,0.15); border-color: var(--green); color: var(--green); }
+
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--dark3); }
+  th { padding: 12px 14px; text-align: left; color: var(--gold); font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:active { background: rgba(255,255,255,0.03); }
+
+  /* ── PPT ── */
+  .ppt-card {
+    background: var(--dark3);
+    border: 1px solid rgba(74,158,232,0.2);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex; gap: 16px; align-items: center;
+    margin-top: 16px;
+  }
+  .ppt-icon { width: 56px; height: 56px; background: rgba(74,158,232,0.15); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+  .ppt-meta h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; word-break: break-all; }
+  .ppt-meta p { color: var(--text-muted); font-size: 12px; }
+  .ppt-dl { margin-top: 12px; }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    display: flex;
+    background: rgba(13,13,26,0.95);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    flex-shrink: 0;
+    position: relative; z-index: 50;
+  }
+  .nav-item {
+    flex: 1; display: flex;
+    flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px; cursor: pointer;
+    border: none; background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-item .nav-icon { font-size: 22px; transition: transform 0.2s; }
+  .nav-item .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.3px; }
+  .nav-item.active { color: var(--gold); }
+  .nav-item.active .nav-icon { transform: translateY(-2px); }
+  .nav-item:active .nav-icon { transform: scale(0.85); }
+
+  /* ── INSTALL BANNER ── */
+  .install-banner {
+    background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(232,160,64,0.08));
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 18px; padding: 20px;
+    margin-bottom: 20px; display: none;
+  }
+  .install-banner.show { display: block; animation: fadeUp 0.4s ease; }
+  .install-banner h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .install-banner p { color: var(--text-muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+  .install-banner-btns { display: flex; gap: 10px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; top: 80px; left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--dark2);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 50px; padding: 12px 24px;
+    z-index: 1000;
+    display: flex; gap: 10px; align-items: center;
+    opacity: 0; transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast-msg { font-size: 14px; font-weight: 500; }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty .ei { font-size: 44px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes popIn { from { opacity:0; transform: scale(0.8); } to { opacity:1; transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="app-logo">✦ ድህረ ገጼ</div>
+    <button class="install-btn" id="installBtn" onclick="installApp()">
+      ⬇️ Install
+    </button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content" id="content">
+
+    <!-- HOME -->
+    <div class="section active" id="sec-home">
+      <div class="install-banner" id="installBanner">
+        <h3>📱 App አድርጉ!</h3>
+        <p>ይህን ድህረ ገጽ እንደ App ወደ ስልክዎ ያክሉ — ኢንተርኔት ሳያስፈልግ ይሰራል!</p>
+        <div class="install-banner-btns">
+          <button class="btn-gold" onclick="installApp()" style="font-size:13px">⬇️ ወዲያውኑ Install</button>
+          <button class="btn-ghost" onclick="document.getElementById('installBanner').style.display='none'" style="font-size:13px; flex:0; padding:12px 16px">✕</button>
+        </div>
+      </div>
+
+      <div class="home-hero">
+        <div class="hero-badge">✦ የእርስዎ App</div>
+        <h1>ሁሉም<br><span>በአንድ App</span></h1>
+        <p>ፎቶ፣ ጽሑፍ፣ Excel<br>እና PowerPoint</p>
+      </div>
+
+      <div class="feature-cards">
+        <div class="fcard fc-photo" onclick="goTo('photo')">
+          <div class="fcard-icon">📸</div>
+          <div class="fcard-info">
+            <h3>ፎቶ ማዕከለ</h3>
+            <p>ፎቶዎቻዎን ያስቀምጡ</p>
+          </div>
+        </div>
+        <div class="fcard fc-text" onclick="goTo('text')">
+          <div class="fcard-icon">✏️</div>
+          <div class="fcard-info">
+            <h3>የጽሑፍ አርታኢ</h3>
+            <p>ሀሳቦቻዎን ይፃፉ</p>
+          </div>
+        </div>
+        <div class="fcard fc-excel" onclick="goTo('excel')">
+          <div class="fcard-icon">📊</div>
+          <div class="fcard-info">
+            <h3>Excel ሰንጠረዥ</h3>
+            <p>ፋይሎቻዎን ይጫኑ</p>
+          </div>
+        </div>
+        <div class="fcard fc-ppt" onclick="goTo('ppt')">
+          <div class="fcard-icon">📽️</div>
+          <div class="fcard-info">
+            <h3>PowerPoint</h3>
+            <p>ፕሬዘንቴሽን ያስቀምጡ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PHOTO -->
+    <div class="section" id="sec-photo">
+      <div class="panel-header">
+        <button class="back-btn" onclick="goTo('home')">‹</button>
+        <div class="panel-title">📸 ፎቶ</div>
+      </div>
+      <div class="drop-zone dz-photo" onclick="document.getElementById('photoIn').click()">
+        <input type="file" id="photoIn" multiple accept="image/*" onchange="handlePhotos(this.files)">
+        <div class="dz-icon">🖼️</div>
+        <div class="dz-title">ፎቶ ያስገቡ</div>
+        <div class="dz-sub">ጋለሪ ወይም ካሜራ</div>
+        <button class="upload-btn ub-photo" onclick="event.stopPropagation(); document.getElementById('photoIn').click()">ፎቶ ምረጥ</button>
+      </div>
+      <div class="photo-grid" id="photoGrid">
+        <div class="empty" id="photoEmpty" style="grid-column:1/-1">
+          <div class="ei">🌅</div>
+          <p>ፎቶዎች ገና የሉም</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXT -->
+    <div class="section" id="sec-text">
+      <div class="panel-header">
+        <button class="back-btn" onclick="goTo('home')">‹</button>
+        <div class="panel-title">✏️ ጽሑፍ</div>
+      </div>
+      <div class="editor-toolbar">
+        <button class="tool-btn" onclick="fmt('bold')"><b>B</b></button>
+        <button class="tool-btn" onclick="fmt('italic')"><i>I</i></button>
+        <button class="tool-btn" onclick="fmt('underline')"><u>U</u></button>
+        <button class="tool-btn" onclick="fmt('insertUnorderedList')">•≡</button>
+        <button class="tool-btn" onclick="fmt('insertOrderedList')">1≡</button>
+        <button class="tool-btn" onclick="fmt('justifyLeft')">⬅</button>
+        <button class="tool-btn" onclick="fmt('justifyCenter')">☰</button>
+        <button class="tool-btn" onclick="fmt('undo')">↩</button>
+        <button class="tool-btn" onclick="fmt('redo')">↪</button>
+      </div>
+      <div class="editor-area" id="editor" contenteditable="true"></div>
+      <div class="editor-actions">
+        <button class="btn-gold" onclick="saveText()">💾 አስቀምጥ</button>
+        <button class="btn-ghost" onclick="copyText()">📋 ቅዳ</button>
+        <button class="btn-ghost" onclick="clearEditor()" style="flex:0; padding:12px 16px">🗑️</button>
+      </div>
+    </div>
+
+    <!-- EXCEL -->
+    <div class="section" id="sec-excel">
+      <div class="panel-header">
+        <button class="back-btn" onclick="goTo('home')">‹</button>
+        <div class="panel-title">📊 Excel</div>
+      </div>
+      <div class="drop-zone dz-excel" onclick="document.getElementById('excelIn').click()">
+        <input type="file" id="excelIn" accept=".xlsx,.xls,.csv" onchange="handleExcel(this.files[0])">
+        <div class="dz-icon">📊</div>
+        <div class="dz-title">Excel ፋይል ያስገቡ</div>
+        <div class="dz-sub">.xlsx, .xls, .csv</div>
+        <button class="upload-btn ub-excel" onclick="event.stopPropagation(); document.getElementById('excelIn').click()">ፋይል ምረጥ</button>
+      </div>
+      <div id="excelOut">
+        <div class="empty" id="excelEmpty" style="margin-top:20px">
+          <div class="ei">📂</div>
+          <p>Excel ፋይል ገና አልተጫነም</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PPT -->
+    <div class="section" id="sec-ppt">
+      <div class="panel-header">
+        <button class="back-btn" onclick="goTo('home')">‹</button>
+        <div class="panel-title">📽️ PowerPoint</div>
+      </div>
+      <div class="drop-zone dz-ppt" onclick="document.getElementById('pptIn').click()">
+        <input type="file" id="pptIn" accept=".pptx,.ppt,.pdf" onchange="handlePPT(this.files[0])">
+        <div class="dz-icon">📽️</div>
+        <div class="dz-title">PowerPoint ያስገቡ</div>
+        <div class="dz-sub">.pptx, .ppt ፋይሎች</div>
+        <button class="upload-btn ub-ppt" onclick="event.stopPropagation(); document.getElementById('pptIn').click()">ፋይል ምረጥ</button>
+      </div>
+      <div id="pptOut">
+        <div class="empty" id="pptEmpty" style="margin-top:20px">
+          <div class="ei">🎞️</div>
+          <p>PowerPoint ፋይል ገና አልተጫነም</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="goTo('home')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">ዋና</span>
+    </button>
+    <button class="nav-item" id="nav-photo" onclick="goTo('photo')">
+      <span class="nav-icon">📸</span>
+      <span class="nav-label">ፎቶ</span>
+    </button>
+    <button class="nav-item" id="nav-text" onclick="goTo('text')">
+      <span class="nav-icon">✏️</span>
+      <span class="nav-label">ጽሑፍ</span>
+    </button>
+    <button class="nav-item" id="nav-excel" onclick="goTo('excel')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Excel</span>
+    </button>
+    <button class="nav-item" id="nav-ppt" onclick="goTo('ppt')">
+      <span class="nav-icon">📽️</span>
+      <span class="nav-label">PPT</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span class="toast-msg" id="toastMsg"></span>
+</div>
+
+<script>
+// ── PWA Install ──
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').classList.add('visible');
+  document.getElementById('installBanner').classList.add('show');
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBtn').classList.remove('visible');
+  document.getElementById('installBanner').style.display = 'none';
+  showToast('App ተጭኗል! 🎉', '📱');
+});
+async function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') showToast('App ተጭኗል!', '🎉');
+    deferredPrompt = null;
+    document.getElementById('installBtn').classList.remove('visible');
+  } else {
+    showToast('Share → "Add to Home Screen" ይጫኑ', 'ℹ️');
+  }
+}
+
+// ── Service Worker ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ── Navigation ──
+let current = 'home';
+function goTo(id) {
+  document.getElementById('sec-' + current).classList.remove('active');
+  document.getElementById('nav-' + current)?.classList.remove('active');
+  current = id;
+  const sec = document.getElementById('sec-' + id);
+  sec.classList.add('active');
+  document.getElementById('nav-' + id)?.classList.add('active');
+  document.getElementById('content').scrollTo(0, 0);
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg, icon='✅') {
+  clearTimeout(toastTimer);
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = icon;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── PHOTOS ──
+let photoCount = 0;
+function handlePhotos(files) {
+  const grid = document.getElementById('photoGrid');
+  const empty = document.getElementById('photoEmpty');
+  if (empty) empty.remove();
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      photoCount++;
+      const div = document.createElement('div');
+      div.className = 'photo-item';
+      div.innerHTML = `<img src="${e.target.result}" alt="">
+        <button class="photo-del" onclick="this.parentNode.remove(); photoCount--;">✕</button>`;
+      grid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+  showToast(`${files.length} ፎቶ ተጫነ!`, '📸');
+}
+
+// ── TEXT EDITOR ──
+function fmt(cmd) {
+  document.getElementById('editor').focus();
+  document.execCommand(cmd, false, null);
+}
+function saveText() {
+  const c = document.getElementById('editor').innerHTML;
+  if (!c.trim()) { showToast('ጽሑፍ ባዶ ነው!', '⚠️'); return; }
+  const b = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:sans-serif;padding:32px;line-height:1.8;max-width:700px;margin:auto;}</style></head><body>${c}</body></html>`], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b);
+  a.download = 'ጽሑፍ.html'; a.click();
+  showToast('ተቀምጧል!', '💾');
+}
+function copyText() {
+  navigator.clipboard.writeText(document.getElementById('editor').innerText)
+    .then(() => showToast('ጽሑፍ ተቀዷል!', '📋'));
+}
+function clearEditor() {
+  document.getElementById('editor').innerHTML = '';
+  showToast('ጸድቷል', '🗑️');
+}
+
+// ── EXCEL ──
+function handleExcel(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const out = document.getElementById('excelOut');
+      const empty = document.getElementById('excelEmpty');
+      if (empty) empty.remove();
+      out.innerHTML = '';
+      if (wb.SheetNames.length > 1) {
+        const tabs = document.createElement('div');
+        tabs.className = 'sheet-tabs';
+        wb.SheetNames.forEach((name, i) => {
+          const tab = document.createElement('button');
+          tab.className = 'sheet-tab' + (i===0?' active':'');
+          tab.textContent = name;
+          tab.onclick = () => {
+            document.querySelectorAll('.sheet-tab').forEach(t=>t.classList.remove('active'));
+            tab.classList.add('active');
+            renderSheet(wb, name, out);
+          };
+          tabs.appendChild(tab);
+        });
+        out.appendChild(tabs);
+      }
+      renderSheet(wb, wb.SheetNames[0], out);
+      showToast('Excel ተጫነ!', '📊');
+    } catch(err) { showToast('ፋይሉን ማንበብ አልተቻለም', '❌'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function renderSheet(wb, name, container) {
+  const old = container.querySelector('.table-wrap');
+  if (old) old.remove();
+  const data = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, defval:''});
+  if (!data.length) return;
+  const maxCols = Math.max(...data.map(r=>r.length));
+  let html = '<div class="table-wrap"><table><thead><tr>';
+  (data[0]||[]).forEach(c => html += `<th>${c||''}</th>`);
+  for(let i=data[0].length;i<maxCols;i++) html+='<th></th>';
+  html += '</tr></thead><tbody>';
+  data.slice(1).forEach(row => {
+    html += '<tr>';
+    for(let i=0;i<maxCols;i++) html+=`<td>${row[i]!==undefined?row[i]:''}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+// ── PPT ──
+function handlePPT(file) {
+  if (!file) return;
+  const out = document.getElementById('pptOut');
+  const empty = document.getElementById('pptEmpty');
+  if (empty) empty.remove();
+  const size = (file.size/1024).toFixed(0);
+  const url = URL.createObjectURL(file);
+  out.innerHTML = `
+    <div class="ppt-card">
+      <div class="ppt-icon">📽️</div>
+      <div class="ppt-meta">
+        <h4>${file.name}</h4>
+        <p>${file.name.split('.').pop().toUpperCase()} · ${size} KB</p>
+        <div class="ppt-dl" style="margin-top:10px">
+          <a href="${url}" download="${file.name}">
+            <button class="btn-gold" style="font-size:13px; padding:10px 20px">⬇️ አውርድ</button>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--dark3);border:1px solid rgba(74,158,232,0.2);border-radius:16px;padding:18px;margin-top:14px;">
+      <p style="color:var(--text-muted);font-size:13px;line-height:1.6">💡 ፋይሉን ለማየት <strong style="color:var(--text)">Microsoft PowerPoint</strong> ወይም <strong style="color:var(--text)">Google Slides</strong> ይጠቀሙ</p>
+    </div>`;
+  showToast('PowerPoint ተጫነ!', '📽️');
+}
+</script>
+</body>
+</html>
